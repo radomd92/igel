@@ -1,6 +1,7 @@
 """Main module."""
 
 import pandas as pd
+import numpy as np
 import pickle
 import os
 import json
@@ -13,14 +14,16 @@ try:
     from igel.configs import configs
     from igel.data import models_dict, metrics_dict
     from igel.preprocessing import update_dataset_props
-    from igel.preprocessing import handle_missing_values, encode, normalize
+    from igel.preprocessing import handle_missing_values, encode, normalize, read_data_to_df
+    from igel.hyperparams import hyperparameter_search
 except ImportError:
     from utils import read_yaml, create_yaml, extract_params, _reshape, read_json
     from data import evaluate_model
     from configs import configs
     from data import models_dict, metrics_dict
     from preprocessing import update_dataset_props
-    from preprocessing import handle_missing_values, encode, normalize
+    from preprocessing import handle_missing_values, encode, normalize, read_data_to_df
+    from hyperparams import hyperparameter_search
 
 from sklearn.model_selection import train_test_split, cross_validate
 from sklearn.multioutput import MultiOutputClassifier, MultiOutputRegressor
@@ -34,6 +37,7 @@ class Igel(object):
     """
     Igel is the base model to use the fit, evaluate and predict functions of the sklearn library
     """
+
     available_commands = ('fit', 'evaluate', 'predict', 'experiment')
     supported_types = ('regression', 'classification', 'clustering')
     results_path = configs.get('results_path')  # path to the results folder
@@ -75,6 +79,16 @@ class Igel(object):
                         f"model_props: {self.model_props} \n "
                         f"target: {self.target} \n")
 
+            # handle random numbers generation
+            random_num_options = self.dataset_props.get('random_numbers', None)
+            if random_num_options:
+                generate_reproducible = random_num_options.get('generate_reproducible', None)
+                if generate_reproducible:
+                    logger.info("You provided the generate reproducible results option.")
+                    seed = random_num_options.get('seed', 42)
+                    np.random.seed(seed)
+                    logger.info(f"Setting a seed = {seed} to generate same random numbers on each experiment..")
+
         # if entered command is evaluate or predict, then the pre-fitted model needs to be loaded and used
         else:
             self.model_path = cli_args.get('model_path', self.default_model_path)
@@ -83,7 +97,7 @@ class Igel(object):
             with open(self.description_file, 'r') as f:
                 dic = json.load(f)
                 self.target: list = dic.get("target")  # target to predict as a list
-                self.model_type: str = dic.get("type")  # type of the model -> regression or classification
+                self.model_type: str = dic.get("type")  # type of the model -> regression, classification or clustering
                 self.dataset_props: dict = dic.get('dataset_props')  # dataset props entered while fitting
         getattr(self, self.command)()
 
@@ -115,8 +129,8 @@ class Igel(object):
                 model_class = model.get('cv_class', None)
                 if model_class:
                     logger.info(
-                    f"cross validation estimator detected. "
-                    f"Switch to the CV version of the {model_algorithm} algorithm")
+                                f"cross validation estimator detected. "
+                                f"Switch to the CV version of the {model_algorithm} algorithm")
                 else:
                     logger.info(
                         f"No CV class found for the {model_algorithm} algorithm"
@@ -180,14 +194,14 @@ class Igel(object):
         read and return data as x and y
         @return: list of separate x and y
         """
-        assert isinstance(self.target, list), "provide target(s) as a list in the yaml file"
+
         if self.model_type != "clustering":
+            assert isinstance(self.target, list), "provide target(s) as a list in the yaml file"
             assert len(self.target) > 0, "please provide at least a target to predict"
 
         try:
-            read_data_options = self.dataset_props.get('read_data_options', None)
-            dataset = pd.read_csv(self.data_path) if not read_data_options else pd.read_csv(self.data_path,
-                                                                                            **read_data_options)
+            read_data_options = self.dataset_props.get('read_data_options', {})
+            dataset = read_data_to_df(data_path=self.data_path, **read_data_options)
             logger.info(f"dataset shape: {dataset.shape}")
             attributes = list(dataset.columns)
             logger.info(f"dataset attributes: {attributes}")
@@ -283,23 +297,23 @@ class Igel(object):
         return self._process_data(target='predict')
 
     def get_evaluation(self, model, x_test, y_true, y_pred, **kwargs):
-        res = None
         try:
             res = evaluate_model(model_type=self.model_type,
-                                  model=model,
-                                  x_test=x_test,
-                                  y_pred=y_pred,
-                                  y_true=y_true,
-                                  get_score_only=False,
-                                  **kwargs)
+                                 model=model,
+                                 x_test=x_test,
+                                 y_pred=y_pred,
+                                 y_true=y_true,
+                                 get_score_only=False,
+                                 **kwargs)
         except Exception as e:
+            logger.debug(e)
             res = evaluate_model(model_type=self.model_type,
-                                  model=model,
-                                  x_test=x_test,
-                                  y_pred=y_pred,
-                                  y_true=y_true,
-                                  get_score_only=True,
-                                  **kwargs)
+                                 model=model,
+                                 x_test=x_test,
+                                 y_pred=y_pred,
+                                 y_true=y_true,
+                                 get_score_only=True,
+                                 **kwargs)
         return res
 
     def fit(self, **kwargs):
@@ -314,6 +328,8 @@ class Igel(object):
         cv_results = None
         eval_results = None
         cv_params = None
+        hp_search_results = {}
+
         if self.model_type == 'clustering':
             x_train = self._prepare_clustering_data()
         else:
@@ -333,11 +349,35 @@ class Igel(object):
             if not cv_params:
                 logger.info(f"cross validation is not provided")
             else:
+                # perform cross validation
+                logger.info("performing cross validation ...")
                 cv_results = cross_validate(estimator=self.model,
                                             X=x_train,
-                                            y=y_train, **cv_params)
+                                            y=y_train,
+                                            **cv_params)
+            hyperparams_props = self.model_props.get('hyperparameter_search', None)
+            if hyperparams_props:
+
+                # perform hyperparameter search
+                method = hyperparams_props.get('method', None)
+                grid_params = hyperparams_props.get('parameter_grid', None)
+                hp_args = hyperparams_props.get('arguments', None)
+                logger.info(f"Performing hyperparameter search using -> {method}")
+                logger.info(f"Grid parameters entered by the user: {grid_params}")
+                logger.info(f"Additional hyperparameter arguments: {hp_args}")
+                best_estimator, best_params, best_score = hyperparameter_search(model=self.model,
+                                                                                method=method,
+                                                                                params=grid_params,
+                                                                                x_train=x_train,
+                                                                                y_train=y_train,
+                                                                                **hp_args)
+                hp_search_results['best_params'] = best_params
+                hp_search_results['best_score'] = best_score
+                self.model = best_estimator
+
             self.model.fit(x_train, y_train)
-        else:
+
+        else:   # if the model type is clustering
             self.model.fit(x_train)
 
         saved = self._save_model(self.model)
@@ -376,13 +416,14 @@ class Igel(object):
             "results_path": str(self.results_path),
             "model_path": str(self.default_model_path),
             "target": None if self.model_type == 'clustering' else self.target,
-            "results_on_test_data": eval_results
+            "results_on_test_data": eval_results,
+            "hyperparameter_search_results": hp_search_results
 
         }
         if self.model_type == 'clustering':
             clustering_res = {
-                "cluster_centers": self.model.cluster_centers_,
-                "cluster_labels": self.model.labels_
+                "cluster_centers": self.model.cluster_centers_.tolist(),
+                "cluster_labels": self.model.labels_.tolist()
             }
             fit_description['clustering_results'] = clustering_res
 
@@ -410,6 +451,7 @@ class Igel(object):
         x_val = None
         y_true = None
         eval_results = None
+
         try:
             model = self._load_model()
             if self.model_type != 'clustering':
@@ -444,11 +486,13 @@ class Igel(object):
             y_pred = _reshape(y_pred)
             logger.info(f"predictions shape: {y_pred.shape} | shape len: {len(y_pred.shape)}")
             logger.info(f"predict on targets: {self.target}")
+            if not self.target:
+                self.target = ['result']
             df_pred = pd.DataFrame.from_dict(
                 {self.target[i]: y_pred[:, i] if len(y_pred.shape) > 1 else y_pred for i in range(len(self.target))})
 
             logger.info(f"saving the predictions to {self.prediction_file}")
-            df_pred.to_csv(self.prediction_file)
+            df_pred.to_csv(self.prediction_file, index=False)
 
         except Exception as e:
             logger.exception(f"Error while preparing predictions: {e}")
@@ -481,17 +525,3 @@ class Igel(object):
         else:
             logger.warning(f"something went wrong while initializing a default file")
 
-
-if __name__ == '__main__':
-    mock_fit_params = {'data_path': '/home/nidhal/projects/igel/examples/multioutput-example/linnerud.csv',
-                       'yaml_path': '/home/nidhal/projects/igel/examples/multioutput-example/multioutput.yaml',
-                       #/home/nidhal/projects/igel/examples/indian-diabetes-example/random-forest.yaml
-                       'cmd': 'fit'}
-    mock_eval_params = {'data_path': '/home/nidhal/projects/igel/examples/data/indian-diabetes/eval-indians-diabetes.csv',
-                        'cmd': 'evaluate'}
-    mock_pred_params = {'data_path': '/home/nidhal/projects/igel/examples/data/indian-diabetes/test-indians-diabetes.csv',
-                        'cmd': 'predict'}
-
-    Igel(**mock_fit_params)
-    # Igel(**mock_eval_params)
-    # Igel(**mock_pred_params)

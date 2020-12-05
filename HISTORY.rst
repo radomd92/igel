@@ -2,6 +2,56 @@
 History
 =======
 
+0.3.1 (2020-10-31)
+-------------------
+
+* Added support for multiple data types (excel, json and html)
+* Added igel gui as a command
+* Integrated igel UI
+
+0.3.0 (2020-10-15)
+-------------------
+
+* Provided a way to use reproducible results
+* Added support for random state generation
+* Fixed bug in dataset options
+* Linked Igel-UI
+
+0.2.9 (2020-10-12)
+-------------------
+
+* Fixed bug in clustering
+* added a clustering example using kmeans
+* added support for clustering arguments
+
+0.2.8 (2020-10-09)
+-------------------
+
+* implemented hyperparameter search
+* added a hyperparameter example
+
+
+0.2.7 (2020-10-05)
+-------------------
+
+* removed colorama (since it was causing bugs on jupyter)
+* improved interactive mode
+* added commands to get version and infos about the package
+
+0.2.6 (2020-10-04)
+-------------------
+
+* added interactive mode in cli
+* added colors in cli to improve readability
+* updated setup
+
+0.2.5 (2020-10-03)
+-------------------
+
+* fixed igel initialization step
+* updated examples
+* added gids to readme
+
 0.2.4 (2020-09-28)
 -------------------
 
