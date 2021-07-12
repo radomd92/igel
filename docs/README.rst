@@ -2,28 +2,16 @@
 igel
 ====
 
-.. image:: assets/logo.jpg
-    :width: 100%
-    :scale: 100%
-    :align: center
-    :alt: igel-icon
-
-
 |
-
-|
-
 
 .. image:: https://img.shields.io/pypi/v/igel?color=green
         :alt: PyPI
         :target: https://pypi.python.org/pypi/igel
-
-.. image:: https://img.shields.io/travis/nidhaloff/igel.svg
-        :target: https://travis-ci.com/nidhaloff/igel
-
+.. image:: https://img.shields.io/github/workflow/status/nidhaloff/igel/build
+        :target: https://github.com/nidhaloff/igel/actions/workflows/build.yml
+        :alt: GitHub Workflow Status
 .. image:: https://pepy.tech/badge/igel
         :target: https://pepy.tech/project/igel
-
 .. image:: https://readthedocs.org/projects/igel/badge/?version=latest
         :target: https://igel.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
@@ -33,14 +21,6 @@ igel
         :target: https://pypi.python.org/pypi/igel
 
 
-.. image:: https://img.shields.io/pypi/status/igel
-        :alt: PyPI - Status
-        :target: https://pypi.python.org/pypi/igel
-
-.. image:: https://img.shields.io/librariesio/github/nidhaloff/igel
-        :alt: Libraries.io dependency status for GitHub repo
-        :target: https://pypi.python.org/pypi/igel
-
 .. image:: https://img.shields.io/github/stars/nidhaloff/igel?style=social
         :alt: GitHub Repo stars
         :target: https://pypi.python.org/pypi/igel
@@ -49,7 +29,6 @@ igel
         :alt: Twitter URL
         :target: https://twitter.com/NidhalBaccouri
 
-|
 |
 
 A delightful machine learning tool that allows you to train/fit, test and use models **without writing code**
@@ -103,7 +82,7 @@ a **single line of code**.
 All you need is a **yaml** (or **json**) file, where you need to describe what you are trying to do. That's it!
 
 Igel supports all sklearn's machine learning functionality, whether regression, classification or clustering.
-Precisely, you can use **63** different machine learning model in igel.
+Precisely, you can use **63** different machine learning models in igel.
 
 Igel supports most used dataset types in the data science field. For instance, your input dataset can be
 a csv, txt, excel sheet, json or even html file that you want to fetch. All these types are supported by igel.
@@ -198,6 +177,7 @@ Igel's supported models:
 Quick Start
 ------------
 
+
 Run :code:`igel version` to check the version.
 
 Run :code:`igel info` to get meta data about the project.
@@ -217,9 +197,12 @@ You can run the help command to get instructions:
 
 - Demo:
 
-.. image:: assets/igel-help.gif
+.. image:: ../assets/igel-help.gif
 
 ---------------------------------------------------------------------------------------------------------
+
+Configuration
+##############
 
 First step is to provide a yaml file (you can also use json if you want)
 
@@ -243,7 +226,7 @@ which will create a basic config file for you on the fly.
 
     Example:
     If I want to use neural networks to classify whether someone is sick or not using the indian-diabetes dataset,
-    then I would use this command to initialize a yaml file:
+    then I would use this command to initialize a yaml file n.b. you may need to rename outcome column in .csv to sick:
     $ igel init -type "classification" -model "NeuralNetwork" -target "sick"
     """
     $ igel init
@@ -253,7 +236,7 @@ check it out and modify it if you want to, otherwise you can also create everyth
 
 - Demo:
 
-.. image:: assets/igel-init.gif
+.. image:: ../assets/igel-init.gif
 
 -----------------------------------------------------------------------------------------------------------
 
@@ -286,13 +269,16 @@ get you to interactive mode, where you will be prompted to enter the model you w
 you want to solve. Igel will then show you information about the model and a link that you can follow to see
 a list of available arguments and how to use these.
 
+Train a model
+##############
+
 - The expected way to use igel is from terminal (igel CLI):
 
 Run this command in terminal to fit/train a model, where you provide the **path to your dataset** and the **path to the yaml file**
 
 .. code-block:: console
 
-    $ igel fit --data_path 'path_to_your_csv_dataset.csv' --yaml_file 'path_to_your_yaml_file.yaml'
+    $ igel fit --data_path 'path_to_your_csv_dataset.csv' --yaml_path 'path_to_your_yaml_file.yaml'
 
     # or shorter
 
@@ -306,9 +292,12 @@ Run this command in terminal to fit/train a model, where you provide the **path 
 
 - Demo:
 
-.. image:: assets/igel-fit.gif
+.. image:: ../assets/igel-fit.gif
 
 --------------------------------------------------------------------------------------------------------
+
+Evaluate the model
+###################
 
 You can then evaluate the trained/pre-fitted model:
 
@@ -321,10 +310,12 @@ You can then evaluate the trained/pre-fitted model:
 
 - Demo:
 
-.. image:: assets/igel-eval.gif
+.. image:: ../assets/igel-eval.gif
 
 ------------------------------------------------------------------------------------------------------
 
+Use model for prediction
+#########################
 
 Finally, you can use the trained/pre-fitted model to make predictions if you are happy with the evaluation results:
 
@@ -337,12 +328,14 @@ Finally, you can use the trained/pre-fitted model to make predictions if you are
 
 - Demo:
 
-.. image:: assets/igel-pred.gif
+.. image:: ../assets/igel-pred.gif
 
-.. image:: assets/igel-predict.gif
+.. image:: ../assets/igel-predict.gif
 
 ----------------------------------------------------------------------------------------------------------
 
+Start an Experiment
+####################
 
 You can combine the train, evaluate and predict phases using one single command called experiment:
 
@@ -356,8 +349,10 @@ You can combine the train, evaluate and predict phases using one single command 
 
 - Demo:
 
-.. image:: assets/igel-experiment.gif
+.. image:: ../assets/igel-experiment.gif
 
+Use igel from python (instead of terminal)
+###########################################
 
 - Alternatively, you can also write code if you want to:
 
@@ -365,17 +360,59 @@ You can combine the train, evaluate and predict phases using one single command 
 
     from igel import Igel
 
-    # provide the arguments in a dictionary
-    params = {
-            'cmd': 'fit',    # provide the command you want to use. whether fit, evaluate or predict
-            'data_path': 'path_to_your_dataset',
-            'yaml_path': 'path_to_your_yaml_file'
-    }
-
-    Igel(**params)
+    Igel(cmd="fit", data_path="path_to_your_dataset", yaml_path="path_to_your_yaml_file")
     """
     check the examples folder for more
     """
+
+
+----------------------------------------------------------------------------------------------------------
+
+Serve the model
+#################
+
+The next step is to use your model in production. Igel helps you with this task too by providing the serve command.
+Running the serve command will tell igel to serve your model. Precisely, igel will automatically build
+a REST server and serve your model on a specific host and port, which you can configure by passing these as
+cli options.
+
+The easiest way is to run:
+
+.. code-block:: console
+
+    $ igel serve --model_results_dir "path_to_model_results_directory"
+
+Notice that igel needs the **--model_results_dir** or shortly -res_dir cli option in order to load the model and start the server.
+By default, igel will serve your model on **localhost:8000**, however, you can easily override this by providing a host
+and a port cli options.
+
+.. code-block:: console
+
+    $ igel serve --model_results_dir "path_to_model_results_directory" --host "127.0.0.1" --port 8000
+
+Igel uses `FastAPI <https://fastapi.tiangolo.com/>`_ for creating the REST server, which is a modern high performance
+framework
+and `uvicorn <https://www.uvicorn.org/>`_ to run it under the hood.
+
+----------------------------------------------------------------------------------------------------------
+
+
+Use igel from python (instead of terminal)
+###########################################
+
+- Alternatively, you can also write code if you want to:
+
+..  code-block:: python
+
+    from igel import Igel
+
+    Igel(cmd="fit", data_path="path_to_your_dataset", yaml_path="path_to_your_yaml_file")
+    """
+    check the examples folder for more
+    """
+
+----------------------------------------------------------------------------------------------------------
+
 
 Interactive Mode
 ------------------
@@ -398,11 +435,11 @@ a >= 0.2.6 version.
 
 - Demo (init command):
 
-.. image:: assets/igel-init-interactive.gif
+.. image:: ../assets/igel-init-interactive.gif
 
 - Demo (fit command):
 
-.. image:: assets/igel-fit-interactive.gif
+.. image:: ../assets/igel-fit-interactive.gif
 
 As you can see, you don't need to memorize the arguments, you can just let igel ask you to enter them.
 Igel will provide you with a nice message explaining which argument you need to enter.
@@ -799,6 +836,25 @@ Links
 ------
 
 - Article: https://medium.com/@nidhalbacc/machine-learning-without-writing-code-984b238dd890
+
+
+
+Help/GetHelp
+---------------
+
+If you are facing any problems, please feel free to open an issue.
+Additionally, you can make contact with the author for further information/questions.
+
+Do you like igel?
+You can always help the development of this project by:
+
+- Following on github and/or twitter
+- Star the github repo
+- Watch the github repo for new releases
+- Tweet about the package
+- Help others with issues on github
+- Create issues and pull requests
+- Sponsor the project
 
 Contributions
 --------------
